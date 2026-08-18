@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-blue-50 px-4">
+    <main className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-gray-50 via-white to-blue-50 px-4 py-6">
 
       <div className="w-full max-w-md rounded-[28px] border border-white/80 bg-white/70 p-7 shadow-[0_25px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-9">
 

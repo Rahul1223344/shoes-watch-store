@@ -186,15 +186,25 @@ export default function ProductImageUploader({
               )}
 
               <button
-                type="button"
-                onClick={() =>
-                  removeImage(image.id)
-                }
-                className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 text-red-500 opacity-0 shadow-sm transition group-hover:opacity-100"
-                aria-label="Remove image"
-              >
-                <Trash2 size={14} />
-              </button>
+  type="button"
+  onClick={() => removeImage(image.id)}
+  className="
+    absolute right-2 top-2
+    flex h-8 w-8
+    items-center justify-center
+    rounded-lg
+    bg-white/90
+    text-red-500
+    shadow-sm
+    transition
+    opacity-100
+    sm:opacity-0
+    sm:group-hover:opacity-100
+  "
+  aria-label="Remove image"
+>
+  <Trash2 size={14} />
+</button>
             </div>
           ))}
         </div>

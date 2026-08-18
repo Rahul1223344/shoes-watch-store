@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Star } from "lucide-react";
+import { Star } from "lucide-react";
 
 import type { Product } from "@/types/product";
 
@@ -14,16 +14,47 @@ export default function ProductCard({
   const primaryImage = product.images[0];
 
   return (
-    <article className="group relative overflow-hidden rounded-[22px] border border-black/5 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
-
+    <article
+      className="
+        group relative overflow-hidden
+        rounded-[22px]
+        border border-black/5
+        bg-white/70
+        p-3
+        shadow-[0_10px_35px_rgba(15,23,42,0.05)]
+        backdrop-blur-xl
+        transition-all duration-300
+        hover:-translate-y-1
+        hover:shadow-[0_18px_45px_rgba(15,23,42,0.09)]
+        sm:p-4
+      "
+    >
       {/* Product Image */}
       <Link
         href={`/product/${product.slug}`}
-        className="relative block aspect-square overflow-hidden rounded-t-[22px] bg-[#f7f7f7]"
+        className="
+          relative block
+          aspect-square
+          overflow-hidden
+          rounded-[18px]
+          bg-gradient-to-br
+          from-gray-50
+          via-white
+          to-gray-100
+        "
       >
         {/* Badge */}
         {product.badge && (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+          <span
+            className="
+              absolute left-3 top-3 z-10
+              rounded-full bg-black
+              px-2.5 py-1
+              text-[10px] font-bold
+              uppercase tracking-wide
+              text-white
+            "
+          >
             {product.badge}
           </span>
         )}
@@ -33,32 +64,62 @@ export default function ProductCard({
             src={primaryImage}
             alt={product.name}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 300px"
-            className="object-contain p-6 transition-transform duration-500 group-hover:scale-105 sm:p-8"
+            sizes="
+              (max-width: 640px) 50vw,
+              (max-width: 1024px) 25vw,
+              300px
+            "
+            className="
+              object-contain
+              p-3
+              transition-transform
+              duration-500
+              group-hover:scale-[1.03]
+              sm:p-4
+            "
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-              No Image
-            </span>
+            <div
+              className="
+                flex h-32 w-32
+                items-center justify-center
+                rounded-full bg-white
+                shadow-[0_15px_35px_rgba(0,0,0,0.06)]
+              "
+            >
+              <span
+                className="
+                  text-xs font-bold
+                  uppercase tracking-wider
+                  text-gray-400
+                "
+              >
+                No Image
+              </span>
+            </div>
           </div>
         )}
-
-        {/* Hover Arrow */}
-        <div className="absolute bottom-3 right-3 flex h-9 w-9 translate-y-2 items-center justify-center rounded-full bg-white opacity-0 shadow-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-          <ArrowUpRight size={17} />
-        </div>
       </Link>
 
       {/* Product Information */}
-      <div className="p-4 sm:p-5">
+      <div className="px-1 pt-4">
 
         {/* Product Name */}
         <Link
           href={`/product/${product.slug}`}
-          className="block"
+          className="block min-w-0"
         >
-          <h3 className="line-clamp-2 text-sm font-bold leading-5 transition-colors hover:text-blue-600 sm:text-[15px]">
+          <h3
+            className="
+              line-clamp-2
+              text-sm font-semibold
+              leading-5
+              transition-colors
+              hover:text-blue-600
+              sm:text-[15px]
+            "
+          >
             {product.name}
           </h3>
         </Link>
@@ -100,14 +161,34 @@ export default function ProductCard({
           )}
         </div>
 
-        {/* CTA */}
+        {/* View Product */}
         <Link
           href={`/product/${product.slug}`}
-          className="mt-4 flex w-full items-center justify-center rounded-xl bg-black px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-gray-800"
+          className="
+            mt-4 flex w-full
+            items-center justify-center
+            rounded-xl
+            border border-black/10
+            bg-white/80
+            px-4 py-2.5
+            text-xs font-bold
+            transition-all duration-300
+
+            /* Mobile */
+            opacity-100
+
+            /* Desktop */
+            md:translate-y-2
+            md:opacity-0
+            md:group-hover:translate-y-0
+            md:group-hover:opacity-100
+
+            hover:bg-black
+            hover:text-white
+          "
         >
           View Product
         </Link>
-
       </div>
     </article>
   );

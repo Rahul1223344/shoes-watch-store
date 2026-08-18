@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Star, Check, MessageCircle } from "lucide-react";
+import { Star, Check, Mail } from "lucide-react";
 
 import { Product } from "@/types/product";
 import ProductGallery from "./ProductGallery";
-import { createWhatsAppOrderUrl } from "@/lib/whatsapp";
 
 import Reviews from "./Reviews";
-import RelatedProducts from "./RelatedProducts";
 
 
 import type { Review } from "@/types/review";
@@ -16,13 +14,11 @@ import type { Review } from "@/types/review";
 interface ProductDetailsProps {
   product: Product;
   reviews: Review[];
-  relatedProducts?: Product[];
 }
 
 export default function ProductDetails({
   product,
   reviews,
-  relatedProducts = [],
 }: ProductDetailsProps) {
   const [selectedOptions, setSelectedOptions] =
     useState<Record<string, string>>({});
@@ -53,41 +49,68 @@ export default function ProductDetails({
     );
   };
 
-  const handleWhatsAppOrder = () => {
-    if (!product.inStock) {
-      setError("This product is currently unavailable.");
-      return;
-    }
+  const handleEmailOrder = () => {
+  if (!product.inStock) {
+    setError("This product is currently unavailable.");
+    return;
+  }
 
-    const missingOption = product.options.find(
-      (option) => !selectedOptions[option.name]
+  const missingOption = product.options.find(
+    (option) => !selectedOptions[option.name]
+  );
+
+  if (missingOption) {
+    setError(
+      `Please select ${missingOption.name.toLowerCase()}.`
     );
+    return;
+  }
 
-    if (missingOption) {
-      setError(
-        `Please select ${missingOption.name.toLowerCase()}.`
-      );
-      return;
-    }
+  const orderEmail =
+    process.env.NEXT_PUBLIC_ORDER_EMAIL;
 
-    try {
-      const url = createWhatsAppOrderUrl({
-        product,
-        selectedOptions,
-        quantity,
-      });
+  if (!orderEmail) {
+    setError(
+      "Order email is not configured yet."
+    );
+    return;
+  }
 
-      window.open(
-        url,
-        "_blank",
-        "noopener,noreferrer"
-      );
-    } catch {
-      setError(
-        "WhatsApp ordering is not configured yet."
-      );
-    }
-  };
+  const optionsText =
+    Object.entries(selectedOptions)
+      .map(
+        ([name, value]) =>
+          `${name}: ${value}`
+      )
+      .join("\n");
+
+  const totalPrice =
+    product.price * quantity;
+
+  const subject = encodeURIComponent(
+    `New Order - ${product.name}`
+  );
+
+  const body = encodeURIComponent(
+    `Hello,
+
+I would like to place an order.
+
+Product: ${product.name}
+Price: ₹${product.price.toLocaleString("en-IN")}
+Quantity: ${quantity}
+Total: ₹${totalPrice.toLocaleString("en-IN")}
+
+${optionsText}
+
+Please contact me to confirm the order and delivery details.
+
+Thank you.`
+  );
+
+  window.location.href =
+    `mailto:${orderEmail}?subject=${subject}&body=${body}`;
+};
 
   return (
     <section className="px-3 py-6 sm:px-5 sm:py-10">
@@ -284,36 +307,37 @@ export default function ProductDetails({
             )}
 
             {/* WhatsApp */}
-            <button
-              type="button"
-              onClick={handleWhatsAppOrder}
-              disabled={!product.inStock}
-              className="
-                mt-7
-                flex
-                w-full
-                items-center
-                justify-center
-                gap-2
-                rounded-2xl
-                bg-[#25D366]
-                px-6
-                py-4
-                text-sm
-                font-black
-                text-white
-                shadow-lg
-                shadow-green-500/20
-                transition-all
-                hover:scale-[1.01]
-                hover:bg-[#20bd5a]
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-              "
-            >
-              <MessageCircle size={19} />
-              Order on WhatsApp
-            </button>
+            {/* Email Order */}
+<button
+  type="button"
+  onClick={handleEmailOrder}
+  disabled={!product.inStock}
+  className="
+    mt-7
+    flex
+    w-full
+    items-center
+    justify-center
+    gap-2
+    rounded-2xl
+    bg-black
+    px-6
+    py-4
+    text-sm
+    font-black
+    text-white
+    shadow-lg
+    shadow-black/10
+    transition-all
+    hover:scale-[1.01]
+    hover:bg-blue-600
+    disabled:cursor-not-allowed
+    disabled:opacity-50
+  "
+>
+  <Mail size={19} />
+  Order via Email
+</button>
 
             {/* Availability */}
             <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500">
@@ -401,11 +425,6 @@ export default function ProductDetails({
 
         </div>
         <Reviews reviews={reviews} />
-
-        <RelatedProducts
-  currentProduct={product}
-  products={relatedProducts}
-/>
       </div>
     </section>
   );

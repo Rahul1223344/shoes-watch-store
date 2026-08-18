@@ -67,8 +67,7 @@ function mapProducts(
   products: unknown[]
 ): Product[] {
   const supabaseUrl =
-    process.env
-      .NEXT_PUBLIC_SUPABASE_URL!;
+    process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
   return products.map(
     (product) =>
@@ -98,9 +97,7 @@ export async function getProducts(): Promise<
     error,
   } = await supabase
     .from("products")
-    .select(
-      PRODUCT_SELECT
-    )
+    .select(PRODUCT_SELECT)
     .eq(
       "is_active",
       true
@@ -177,10 +174,7 @@ export async function getHomeProducts(): Promise<Product[]> {
   }
 
   /* -------------------------------------------------------
-     Fetch categories separately
-
-     We use category_id directly instead of depending
-     on Supabase's nested relationship response.
+     Fetch categories
   ------------------------------------------------------- */
 
   const categoryIds = [
@@ -288,9 +282,6 @@ export async function getHomeProducts(): Promise<Product[]> {
 
   /* -------------------------------------------------------
      Fetch primary product images
-
-     sort_order = 0 is treated as
-     the primary image.
   ------------------------------------------------------- */
 
   const {
@@ -477,7 +468,8 @@ export async function getRelatedProducts(
   currentProductId: string,
   category: "shoes" | "watches"
 ): Promise<Product[]> {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   /* -------------------------------------------------------
      Find category

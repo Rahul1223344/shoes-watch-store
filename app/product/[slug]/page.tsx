@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 
 import ProductDetails from "@/components/product/ProductDetails";
@@ -15,13 +16,12 @@ import {
   mapDatabaseProduct,
 } from "@/lib/supabase/products";
 
-import {
-  getRelatedProducts,
-} from "@/lib/supabase/productQueries";
 
 import type { Review } from "@/types/review";
 
 import Footer from "@/components/layout/Footer";
+
+import RelatedProductsSection from "@/components/product/RelatedProductsSection";
 
 interface ProductPageProps {
   params: Promise<{
@@ -90,309 +90,325 @@ type DatabaseImage = {
    GET PRODUCT
 ========================================================= */
 
-async function getProductBySlug(
-  slug: string
-) {
-  const supabase =
-    await createClient();
+const getProductBySlug = cache(
+  async (slug: string) => {
+    const supabase =
+      await createClient();
 
-  /* -------------------------------------------------------
-     PRODUCT
-  ------------------------------------------------------- */
+    /* -------------------------------------------------------
+       PRODUCT
+    ------------------------------------------------------- */
 
-  const {
-    data: product,
-    error: productError,
-  } = await supabase
-    .from("products")
-    .select(`
-      id,
-      category_id,
-      name,
-      slug,
-      brand,
-      description,
-      price,
-      compare_at_price,
-      is_featured,
-      is_new,
-      is_active,
-      seo_title,
-      seo_description,
-      created_at
-    `)
-    .eq("slug", slug)
-    .eq("is_active", true)
-    .maybeSingle();
+    const {
+      data: product,
+      error: productError,
+    } = await supabase
+      .from("products")
+      .select(`
+        id,
+        category_id,
+        name,
+        slug,
+        brand,
+        description,
+        price,
+        compare_at_price,
+        is_featured,
+        is_new,
+        is_active,
+        seo_title,
+        seo_description,
+        created_at
+      `)
+      .eq("slug", slug)
+      .eq("is_active", true)
+      .maybeSingle();
 
-  if (productError) {
-    console.error(
-      "Product query error:",
-      productError
-    );
+    if (productError) {
+      console.error(
+        "Product query error:",
+        productError
+      );
 
-    return null;
-  }
+      return null;
+    }
 
-  if (!product) {
-    return null;
-  }
+    if (!product) {
+      return null;
+    }
 
-  /* -------------------------------------------------------
-     CATEGORY
-  ------------------------------------------------------- */
+    /* -------------------------------------------------------
+       FETCH INDEPENDENT DATA IN PARALLEL
+    ------------------------------------------------------- */
 
-  const {
-    data: category,
-    error: categoryError,
-  } = await supabase
-    .from("categories")
-    .select(`
-      id,
-      name,
-      slug,
-      description,
-      is_active
-    `)
-    .eq(
-      "id",
-      product.category_id
-    )
-    .maybeSingle();
-
-  if (categoryError) {
-    console.error(
-      "Category query error:",
-      categoryError
-    );
-  }
-
-  /* -------------------------------------------------------
-     PRODUCT OPTIONS
-  ------------------------------------------------------- */
-
-  const {
-    data: options,
-    error: optionsError,
-  } = await supabase
-    .from("product_options")
-    .select(`
-      id,
-      product_id,
-      name,
-      values,
-      created_at
-    `)
-    .eq(
-      "product_id",
-      product.id
-    )
-    .order("created_at", {
-      ascending: true,
-    });
-
-  if (optionsError) {
-    console.error(
-      "Product options query error:",
-      optionsError
-    );
-  }
-
-  /* -------------------------------------------------------
-     PRODUCT IMAGES
-  ------------------------------------------------------- */
-
-  const {
-    data: images,
-    error: imagesError,
-  } = await supabase
-    .from("product_images")
-    .select(`
-      id,
-      product_id,
-      storage_path,
-      alt_text,
-      sort_order,
-      created_at
-    `)
-    .eq(
-      "product_id",
-      product.id
-    )
-    .order("sort_order", {
-      ascending: true,
-    });
-
-  if (imagesError) {
-    console.error(
-      "Product images query error:",
-      imagesError
-    );
-  }
-
-  /* -------------------------------------------------------
-     APPROVED REVIEWS
-  ------------------------------------------------------- */
-
-  const {
-    data: databaseReviews,
-    error: reviewsError,
-  } = await supabase
-    .from("product_reviews")
-    .select(`
-      id,
-      product_id,
-      customer_name,
-      rating,
-      review_text,
-      created_at
-    `)
-    .eq(
-      "product_id",
-      product.id
-    )
-    .eq(
-      "is_approved",
-      true
-    )
-    .order("created_at", {
-      ascending: false,
-    });
-
-  if (reviewsError) {
-    console.error(
-      "Product reviews query error:",
-      reviewsError
-    );
-  }
-
-  /* -------------------------------------------------------
-     MAP REVIEWS
-  ------------------------------------------------------- */
-
-  const reviews: Review[] =
-    (databaseReviews ?? []).map(
-      (review) => ({
-        id: review.id,
-
-        productId:
-          review.product_id,
-
-        customerName:
-          review.customer_name,
-
-        rating:
-          review.rating,
-
-        reviewText:
-          review.review_text,
-
-        verifiedPurchase: false,
-
-        createdAt:
-          review.created_at,
-      })
-    );
-
-  /* -------------------------------------------------------
-     CALCULATE RATING
-  ------------------------------------------------------- */
-
-  /* -------------------------------------------------------
-   REVIEW STATISTICS
-------------------------------------------------------- */
-
-const {
-  data: reviewStats,
-  error: reviewStatsError,
-} = await supabase
-  .from("product_review_stats")
-  .select(`
-    average_rating,
-    review_count
-  `)
-  .eq(
-    "product_id",
-    product.id
-  )
-  .maybeSingle();
-
-if (reviewStatsError) {
-  console.error(
-    "Product review stats query error:",
-    reviewStatsError
-  );
-}
-
-const averageRating =
-  Number(
-    reviewStats?.average_rating ?? 0
-  );
-
-const reviewCount =
-  Number(
-    reviewStats?.review_count ?? 0
-  );
-
-  /* -------------------------------------------------------
-     MAP PRODUCT
-  ------------------------------------------------------- */
-
-  const mappedProduct =
-    mapDatabaseProduct(
-      {
-        ...(product as DatabaseProduct),
-
-        categories:
-          (category as DatabaseCategory | null) ??
-          null,
-
-        product_options:
-          (options as DatabaseOption[]) ??
-          [],
-
-        product_images:
-          (images as DatabaseImage[]) ??
-          [],
-      },
-
-      (storagePath) =>
-        getProductImageUrl(
-          process.env
-            .NEXT_PUBLIC_SUPABASE_URL!,
-          storagePath
+    const [
+      categoryResult,
+      optionsResult,
+      imagesResult,
+      reviewsResult,
+      reviewStatsResult,
+    ] = await Promise.all([
+      /* CATEGORY */
+      supabase
+        .from("categories")
+        .select(`
+          id,
+          name,
+          slug,
+          description,
+          is_active
+        `)
+        .eq(
+          "id",
+          product.category_id
         )
-    );
+        .maybeSingle(),
 
-  /* -------------------------------------------------------
-     ADD REAL REVIEW DATA
-  ------------------------------------------------------- */
+      /* PRODUCT OPTIONS */
+      supabase
+        .from("product_options")
+        .select(`
+          id,
+          product_id,
+          name,
+          values,
+          created_at
+        `)
+        .eq(
+          "product_id",
+          product.id
+        )
+        .order("created_at", {
+          ascending: true,
+        }),
 
- mappedProduct.rating =
-  averageRating;
+      /* PRODUCT IMAGES */
+      supabase
+        .from("product_images")
+        .select(`
+          id,
+          product_id,
+          storage_path,
+          alt_text,
+          sort_order,
+          created_at
+        `)
+        .eq(
+          "product_id",
+          product.id
+        )
+        .order("sort_order", {
+          ascending: true,
+        }),
 
-mappedProduct.reviewCount =
-  reviewCount;
+      /* APPROVED REVIEWS */
+      supabase
+        .from("product_reviews")
+        .select(`
+          id,
+          product_id,
+          customer_name,
+          rating,
+          review_text,
+          created_at
+        `)
+        .eq(
+          "product_id",
+          product.id
+        )
+        .eq(
+          "is_approved",
+          true
+        )
+        .order("created_at", {
+          ascending: false,
+        }),
 
-  /* -------------------------------------------------------
-     RELATED PRODUCTS
-  ------------------------------------------------------- */
+      /* REVIEW STATISTICS */
+      supabase
+        .from("product_review_stats")
+        .select(`
+          average_rating,
+          review_count
+        `)
+        .eq(
+          "product_id",
+          product.id
+        )
+        .maybeSingle(),
+    ]);
 
-  const relatedProducts =
-    await getRelatedProducts(
-      mappedProduct.id,
-      mappedProduct.category
-    );
+    /* -------------------------------------------------------
+       EXTRACT RESULTS
+    ------------------------------------------------------- */
 
-  return {
-    product: mappedProduct,
-    reviews,
-    relatedProducts,
+    const {
+      data: category,
+      error: categoryError,
+    } = categoryResult;
 
-    seoTitle: product.seo_title,
-  seoDescription: product.seo_description,
-  };
-}
+    const {
+      data: options,
+      error: optionsError,
+    } = optionsResult;
+
+    const {
+      data: images,
+      error: imagesError,
+    } = imagesResult;
+
+    const {
+      data: databaseReviews,
+      error: reviewsError,
+    } = reviewsResult;
+
+    const {
+      data: reviewStats,
+      error: reviewStatsError,
+    } = reviewStatsResult;
+
+    /* -------------------------------------------------------
+       QUERY ERRORS
+    ------------------------------------------------------- */
+
+    if (categoryError) {
+      console.error(
+        "Category query error:",
+        categoryError
+      );
+    }
+
+    if (optionsError) {
+      console.error(
+        "Product options query error:",
+        optionsError
+      );
+    }
+
+    if (imagesError) {
+      console.error(
+        "Product images query error:",
+        imagesError
+      );
+    }
+
+    if (reviewsError) {
+      console.error(
+        "Product reviews query error:",
+        reviewsError
+      );
+    }
+
+    if (reviewStatsError) {
+      console.error(
+        "Product review stats query error:",
+        reviewStatsError
+      );
+    }
+
+    /* -------------------------------------------------------
+       MAP REVIEWS
+    ------------------------------------------------------- */
+
+    const reviews: Review[] =
+      (databaseReviews ?? []).map(
+        (review) => ({
+          id: review.id,
+
+          productId:
+            review.product_id,
+
+          customerName:
+            review.customer_name,
+
+          rating:
+            review.rating,
+
+          reviewText:
+            review.review_text,
+
+          verifiedPurchase: false,
+
+          createdAt:
+            review.created_at,
+        })
+      );
+
+    /* -------------------------------------------------------
+       REVIEW STATISTICS
+    ------------------------------------------------------- */
+
+    const averageRating =
+      Number(
+        reviewStats?.average_rating ?? 0
+      );
+
+    const reviewCount =
+      Number(
+        reviewStats?.review_count ?? 0
+      );
+
+    /* -------------------------------------------------------
+       MAP PRODUCT
+    ------------------------------------------------------- */
+
+    const mappedProduct =
+      mapDatabaseProduct(
+        {
+          ...(product as DatabaseProduct),
+
+          categories:
+            (category as DatabaseCategory | null) ??
+            null,
+
+          product_options:
+            (options as DatabaseOption[]) ??
+            [],
+
+          product_images:
+            (images as DatabaseImage[]) ??
+            [],
+        },
+
+        (storagePath) =>
+          getProductImageUrl(
+            process.env
+              .NEXT_PUBLIC_SUPABASE_URL!,
+            storagePath
+          )
+      );
+
+    /* -------------------------------------------------------
+       ADD REAL REVIEW DATA
+    ------------------------------------------------------- */
+
+    mappedProduct.rating =
+      averageRating;
+
+    mappedProduct.reviewCount =
+      reviewCount;
+
+    /* -------------------------------------------------------
+       RELATED PRODUCTS
+    ------------------------------------------------------- */
+
+    /* -------------------------------------------------------
+       RETURN
+    ------------------------------------------------------- */
+
+    return {
+      product: mappedProduct,
+
+      reviews,
+
+      seoTitle:
+        product.seo_title,
+
+      seoDescription:
+        product.seo_description,
+    };
+  }
+);
 
 /* =========================================================
    SEO METADATA
@@ -401,14 +417,16 @@ mappedProduct.reviewCount =
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug } =
+    await params;
 
   const result =
     await getProductBySlug(slug);
 
   if (!result) {
     return {
-      title: "Product Not Found",
+      title:
+        "Product Not Found",
 
       robots: {
         index: false,
@@ -455,15 +473,19 @@ export async function generateMetadata({
         product.images.length > 0
           ? [
               {
-                url: product.images[0],
-                alt: product.name,
+                url:
+                  product.images[0],
+
+                alt:
+                  product.name,
               },
             ]
           : [],
     },
 
     twitter: {
-      card: "summary_large_image",
+      card:
+        "summary_large_image",
 
       title,
 
@@ -471,7 +493,9 @@ export async function generateMetadata({
 
       images:
         product.images.length > 0
-          ? [product.images[0]]
+          ? [
+              product.images[0],
+            ]
           : [],
     },
   };
@@ -484,7 +508,8 @@ export async function generateMetadata({
 export default async function ProductPage({
   params,
 }: ProductPageProps) {
-  const { slug } = await params;
+  const { slug } =
+    await params;
 
   const result =
     await getProductBySlug(slug);
@@ -496,7 +521,6 @@ export default async function ProductPage({
   const {
     product,
     reviews,
-    relatedProducts,
   } = result;
 
   /* -------------------------------------------------------
@@ -523,10 +547,12 @@ export default async function ProductPage({
       <ProductDetails
         product={product}
         reviews={reviews}
-        relatedProducts={
-          relatedProducts
-        }
       />
+
+      <RelatedProductsSection
+      product={product}
+      />
+
       <Footer />
     </main>
   );

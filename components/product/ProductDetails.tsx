@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState , FormEvent } from "react";
 import { Star, Check, Mail } from "lucide-react";
 
 import { Product } from "@/types/product";
@@ -27,6 +27,14 @@ export default function ProductDetails({
 
   const [error, setError] = useState("");
 
+  const [showBuyerForm, setShowBuyerForm] = useState(false);
+
+const [buyerName, setBuyerName] = useState("");
+const [buyerMobile, setBuyerMobile] = useState("");
+const [buyerAddress, setBuyerAddress] = useState("");
+
+const [orderLoading, setOrderLoading] = useState(false);
+
   const handleOptionChange = (
     optionName: string,
     value: string
@@ -49,7 +57,7 @@ export default function ProductDetails({
     );
   };
 
-  const handleEmailOrder = () => {
+const handleEmailOrder = () => {
   if (!product.inStock) {
     setError("This product is currently unavailable.");
     return;
@@ -70,19 +78,56 @@ export default function ProductDetails({
     process.env.NEXT_PUBLIC_ORDER_EMAIL;
 
   if (!orderEmail) {
-    setError(
-      "Order email is not configured yet."
-    );
+    setError("Order email is not configured yet.");
     return;
   }
 
-  const optionsText =
-    Object.entries(selectedOptions)
-      .map(
-        ([name, value]) =>
-          `${name}: ${value}`
-      )
-      .join("\n");
+  setError("");
+  setShowBuyerForm(true);
+};
+
+const handleCompleteOrder = (
+  event: FormEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
+
+  setError("");
+
+  const name = buyerName.trim();
+  const mobile = buyerMobile.trim();
+  const address = buyerAddress.trim();
+
+  if (name.length < 2) {
+    setError("Please enter your full name.");
+    return;
+  }
+
+  if (!/^[6-9]\d{9}$/.test(mobile)) {
+    setError("Please enter a valid 10-digit mobile number.");
+    return;
+  }
+
+  if (address.length < 10) {
+    setError("Please enter your complete delivery address.");
+    return;
+  }
+
+  const orderEmail =
+    process.env.NEXT_PUBLIC_ORDER_EMAIL;
+
+  if (!orderEmail) {
+    setError("Order email is not configured yet.");
+    return;
+  }
+
+  setOrderLoading(true);
+
+  const optionsText = Object.entries(selectedOptions)
+    .map(
+      ([name, value]) =>
+        `${name}: ${value}`
+    )
+    .join("\n");
 
   const totalPrice =
     product.price * quantity;
@@ -92,9 +137,22 @@ export default function ProductDetails({
   );
 
   const body = encodeURIComponent(
-    `Hello,
+`Hello,
 
 I would like to place an order.
+
+==============================
+CUSTOMER INFORMATION
+==============================
+
+Name: ${name}
+Mobile: ${mobile}
+Delivery Address:
+${address}
+
+==============================
+PRODUCT INFORMATION
+==============================
 
 Product: ${product.name}
 Price: ₹${product.price.toLocaleString("en-IN")}
@@ -110,6 +168,9 @@ Thank you.`
 
   window.location.href =
     `mailto:${orderEmail}?subject=${subject}&body=${body}`;
+
+  setOrderLoading(false);
+  setShowBuyerForm(false);
 };
 
   return (
@@ -425,6 +486,228 @@ Thank you.`
 
         </div>
         <Reviews reviews={reviews} />
+         
+        {showBuyerForm && (
+  <div
+    className="
+      fixed inset-0 z-[100]
+      flex items-center justify-center
+      bg-black/40
+      px-4 py-6
+      backdrop-blur-sm
+    "
+  >
+    <div
+      className="
+        w-full max-w-lg
+        max-h-[90vh]
+        overflow-y-auto
+        rounded-[28px]
+        border border-white/80
+        bg-white
+        p-6
+        shadow-[0_30px_100px_rgba(15,23,42,0.2)]
+        sm:p-8
+      "
+    >
+      {/* Header */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+          Order Details
+        </p>
+
+        <h2 className="mt-2 text-2xl font-black tracking-tight">
+          Delivery Information
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-gray-500">
+          Please enter your details so the shopkeeper
+          can contact you and confirm your order.
+        </p>
+      </div>
+
+      <form
+        onSubmit={handleCompleteOrder}
+        className="mt-6 space-y-5"
+      >
+        {/* Name */}
+        <div>
+          <label
+            htmlFor="buyer-name"
+            className="mb-2 block text-sm font-semibold"
+          >
+            Full Name
+          </label>
+
+          <input
+            id="buyer-name"
+            type="text"
+            value={buyerName}
+            onChange={(event) =>
+              setBuyerName(event.target.value)
+            }
+            placeholder="Enter your full name"
+            autoComplete="name"
+            required
+            className="
+              w-full rounded-xl
+              border border-black/10
+              bg-gray-50/70
+              px-4 py-3
+              text-sm
+              outline-none
+              transition
+              focus:border-black/30
+              focus:bg-white
+              focus:ring-2
+              focus:ring-black/5
+            "
+          />
+        </div>
+
+        {/* Mobile */}
+        <div>
+          <label
+            htmlFor="buyer-mobile"
+            className="mb-2 block text-sm font-semibold"
+          >
+            Mobile Number
+          </label>
+
+          <input
+            id="buyer-mobile"
+            type="tel"
+            inputMode="numeric"
+            maxLength={10}
+            value={buyerMobile}
+            onChange={(event) =>
+              setBuyerMobile(
+                event.target.value.replace(/\D/g, "")
+              )
+            }
+            placeholder="10-digit mobile number"
+            autoComplete="tel"
+            required
+            className="
+              w-full rounded-xl
+              border border-black/10
+              bg-gray-50/70
+              px-4 py-3
+              text-sm
+              outline-none
+              transition
+              focus:border-black/30
+              focus:bg-white
+              focus:ring-2
+              focus:ring-black/5
+            "
+          />
+        </div>
+
+        {/* Address */}
+        <div>
+          <label
+            htmlFor="buyer-address"
+            className="mb-2 block text-sm font-semibold"
+          >
+            Delivery Address
+          </label>
+
+          <textarea
+            id="buyer-address"
+            value={buyerAddress}
+            onChange={(event) =>
+              setBuyerAddress(event.target.value)
+            }
+            placeholder="House / Flat, Street, Area, City, State, PIN"
+            autoComplete="street-address"
+            required
+            rows={4}
+            className="
+              w-full resize-none
+              rounded-xl
+              border border-black/10
+              bg-gray-50/70
+              px-4 py-3
+              text-sm
+              outline-none
+              transition
+              focus:border-black/30
+              focus:bg-white
+              focus:ring-2
+              focus:ring-black/5
+            "
+          />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div
+            className="
+              rounded-xl
+              border border-red-100
+              bg-red-50
+              px-4 py-3
+              text-sm
+              font-medium
+              text-red-600
+            "
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex flex-col-reverse gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => {
+              setShowBuyerForm(false);
+              setError("");
+            }}
+            disabled={orderLoading}
+            className="
+              flex-1
+              rounded-xl
+              border border-black/10
+              bg-white
+              px-5 py-3.5
+              text-sm font-bold
+              transition
+              hover:bg-gray-50
+              disabled:opacity-50
+            "
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={orderLoading}
+            className="
+              flex-1
+              rounded-xl
+              bg-black
+              px-5 py-3.5
+              text-sm font-bold
+              text-white
+              shadow-lg
+              shadow-black/10
+              transition
+              hover:bg-blue-600
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
+          >
+            {orderLoading
+              ? "Preparing Order..."
+              : "Complete Order"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
       </div>
     </section>
   );

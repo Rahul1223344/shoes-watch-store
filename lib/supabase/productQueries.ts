@@ -127,13 +127,100 @@ export async function getProducts(): Promise<
    HOMEPAGE PRODUCTS
    Lightweight query for product cards
 ========================================================= */
+/* =========================================================
+   HOMEPAGE PRODUCTS
+   Optimized lightweight query
+========================================================= */
 
-export async function getHomeProducts(): Promise<Product[]> {
+/* =========================================================
+   HOMEPAGE PRODUCTS
+   Initial lightweight query
+   8 shoes + 8 watches
+========================================================= */
+
+const HOME_PRODUCT_LIMIT = 8;
+
+export interface HomeProductsResult {
+  products: Product[];
+  hasMore: {
+    shoes: boolean;
+    watches: boolean;
+  };
+}
+
+/* =========================================================
+   HOMEPAGE PRODUCTS
+   Paginated lightweight query for homepage product cards
+========================================================= */
+
+export async function getHomeProducts(
+  category: "shoes" | "watches",
+  page = 0,
+  limit = 8
+): Promise<{
+  products: Product[];
+  hasMore: boolean;
+}> {
   const supabase = await createClient();
 
   /* -------------------------------------------------------
-     Fetch active products
+     Find category
   ------------------------------------------------------- */
+
+  const {
+    data: categoryData,
+    error: categoryError,
+  } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", category)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (categoryError) {
+    console.error(
+      "Homepage category error:",
+      categoryError
+    );
+
+    return {
+      products: [],
+      hasMore: false,
+    };
+  }
+
+  if (!categoryData) {
+    return {
+      products: [],
+      hasMore: false,
+    };
+  }
+
+  /* -------------------------------------------------------
+     Pagination
+  ------------------------------------------------------- */
+
+  const safePage = Math.max(0, page);
+  const safeLimit = Math.min(
+    8,
+    Math.max(1, limit)
+  );
+
+  const from = safePage * safeLimit;
+  const to = from + safeLimit;
+
+  /*
+   * Fetch one extra product.
+   *
+   * Example:
+   * limit = 8
+   * We fetch 9.
+   *
+   * If 9 products exist:
+   * hasMore = true
+   *
+   * We return only 8.
+   */
 
   const {
     data: products,
@@ -144,21 +231,26 @@ export async function getHomeProducts(): Promise<Product[]> {
       id,
       name,
       slug,
-      brand,
       category_id,
-      description,
       price,
       compare_at_price,
       is_new,
       is_featured,
       is_active,
-      seo_title,
-      seo_description
+      created_at
     `)
+    .eq(
+      "category_id",
+      categoryData.id
+    )
     .eq("is_active", true)
     .order("created_at", {
       ascending: false,
-    });
+    })
+    .range(
+      from,
+      to
+    );
 
   if (productsError) {
     console.error(
@@ -166,94 +258,76 @@ export async function getHomeProducts(): Promise<Product[]> {
       productsError
     );
 
-    return [];
+    return {
+      products: [],
+      hasMore: false,
+    };
   }
 
-  if (!products || products.length === 0) {
-    return [];
+  const fetchedProducts =
+    products ?? [];
+
+  const hasMore =
+    fetchedProducts.length >
+    safeLimit;
+
+  const visibleProducts =
+    fetchedProducts.slice(
+      0,
+      safeLimit
+    );
+
+  if (!visibleProducts.length) {
+    return {
+      products: [],
+      hasMore: false,
+    };
   }
 
   /* -------------------------------------------------------
-     Fetch categories
+     Product IDs
   ------------------------------------------------------- */
 
-  const categoryIds = [
-    ...new Set(
-      products.map(
-        (product) => product.category_id
+  const productIds =
+    visibleProducts.map(
+      (product) => product.id
+    );
+
+  /* -------------------------------------------------------
+     Supporting data
+  ------------------------------------------------------- */
+
+  const [
+    reviewStatsResult,
+    imagesResult,
+  ] = await Promise.all([
+    supabase
+      .from("product_review_stats")
+      .select(
+        "product_id, average_rating, review_count"
       )
-    ),
-  ];
+      .in(
+        "product_id",
+        productIds
+      ),
 
-  const {
-    data: categories,
-    error: categoriesError,
-  } = await supabase
-    .from("categories")
-    .select(`
-      id,
-      slug
-    `)
-    .in("id", categoryIds)
-    .eq("is_active", true);
-
-  if (categoriesError) {
-    console.error(
-      "Failed to fetch product categories:",
-      categoriesError
-    );
-
-    return [];
-  }
+    supabase
+      .from("product_images")
+      .select(
+        "product_id, storage_path"
+      )
+      .in(
+        "product_id",
+        productIds
+      )
+      .eq(
+        "sort_order",
+        0
+      ),
+  ]);
 
   /* -------------------------------------------------------
-     Create category lookup
-  ------------------------------------------------------- */
-
-  const categoryMap =
-    new Map<string, ProductCategory>();
-
-  for (const category of categories ?? []) {
-    if (
-      category.slug === "shoes" ||
-      category.slug === "watches"
-    ) {
-      categoryMap.set(
-        category.id,
-        category.slug
-      );
-    }
-  }
-
-  /* -------------------------------------------------------
-     Fetch approved review statistics
-  ------------------------------------------------------- */
-
-  const productIds = products.map(
-    (product) => product.id
-  );
-
-  const {
-    data: reviewStats,
-    error: reviewStatsError,
-  } = await supabase
-    .from("product_review_stats")
-    .select(`
-      product_id,
-      average_rating,
-      review_count
-    `)
-    .in("product_id", productIds);
-
-  if (reviewStatsError) {
-    console.error(
-      "Failed to fetch product review stats:",
-      reviewStatsError
-    );
-  }
-
-  /* -------------------------------------------------------
-     Create review statistics lookup
+     Review lookup
   ------------------------------------------------------- */
 
   const reviewStatsMap =
@@ -265,201 +339,147 @@ export async function getHomeProducts(): Promise<Product[]> {
       }
     >();
 
-  for (const stat of reviewStats ?? []) {
+  for (
+    const stat of
+      reviewStatsResult.data ?? []
+  ) {
     reviewStatsMap.set(
       stat.product_id,
       {
-        rating: Number(
-          stat.average_rating
-        ),
+        rating:
+          Number(
+            stat.average_rating
+          ),
 
-        reviewCount: Number(
-          stat.review_count
-        ),
+        reviewCount:
+          Number(
+            stat.review_count
+          ),
       }
     );
   }
 
   /* -------------------------------------------------------
-     Fetch primary product images
-  ------------------------------------------------------- */
-
-  const {
-    data: images,
-    error: imagesError,
-  } = await supabase
-    .from("product_images")
-    .select(`
-      id,
-      product_id,
-      storage_path,
-      alt_text,
-      sort_order,
-      created_at
-    `)
-    .in("product_id", productIds)
-    .eq("sort_order", 0);
-
-  if (imagesError) {
-    console.error(
-      "Failed to fetch homepage product images:",
-      imagesError
-    );
-  }
-
-  /* -------------------------------------------------------
-     Create image lookup
+     Image lookup
   ------------------------------------------------------- */
 
   const imageMap =
-    new Map<string, string>();
+    new Map<
+      string,
+      string
+    >();
 
   const supabaseUrl =
     process.env
       .NEXT_PUBLIC_SUPABASE_URL!;
 
-  for (const image of images ?? []) {
+  for (
+    const image of
+      imagesResult.data ?? []
+  ) {
     if (
-      imageMap.has(
+      !imageMap.has(
         image.product_id
       )
     ) {
-      continue;
+      imageMap.set(
+        image.product_id,
+        getProductImageUrl(
+          supabaseUrl,
+          image.storage_path
+        )
+      );
     }
-
-    imageMap.set(
-      image.product_id,
-      getProductImageUrl(
-        supabaseUrl,
-        image.storage_path
-      )
-    );
   }
 
   /* -------------------------------------------------------
-     Map products
+     Convert to frontend Product
   ------------------------------------------------------- */
 
-  return products
-    .map(
-      (product): Product | null => {
-        /* -----------------------------------------------
-           Determine category
-        ------------------------------------------------ */
-
-        const category =
-          categoryMap.get(
-            product.category_id
-          );
-
-        /*
-         * Never silently turn an unknown category
-         * into "shoes".
-         */
-
-        if (!category) {
-          console.error(
-            "Invalid product category:",
-            {
-              productId:
-                product.id,
-
-              productName:
-                product.name,
-
-              categoryId:
-                product.category_id,
-            }
-          );
-
-          return null;
-        }
-
-        /* -----------------------------------------------
-           Review statistics
-        ------------------------------------------------ */
-
-        const stats =
-          reviewStatsMap.get(
-            product.id
-          );
-
-        const rating =
-          stats?.rating ?? 0;
-
-        const reviewCount =
-          stats?.reviewCount ?? 0;
-
-        /* -----------------------------------------------
-           Badge
-        ------------------------------------------------ */
-
-        const badge: Product["badge"] =
-          product.is_new
-            ? "NEW"
-            : product.is_featured
-              ? "POPULAR"
-              : undefined;
-
-        /* -----------------------------------------------
-           Product
-        ------------------------------------------------ */
-
-        return {
-          id: product.id,
-
-          name: product.name,
-
-          slug: product.slug,
-
-          category,
-
-          price:
-            Number(product.price),
-
-          originalPrice:
-            product.compare_at_price !==
-            null
-              ? Number(
-                  product.compare_at_price
-                )
-              : undefined,
-
-          rating,
-
-          reviewCount,
-
-          images:
-            imageMap.has(
+  const mappedProducts =
+    visibleProducts
+      .map(
+        (
+          product
+        ): Product | null => {
+          const stats =
+            reviewStatsMap.get(
               product.id
-            )
-              ? [
-                  imageMap.get(
-                    product.id
-                  )!,
-                ]
-              : [],
+            );
 
-          description:
-            product.description,
+          const badge: Product["badge"] =
+            product.is_new
+              ? "NEW"
+              : product.is_featured
+                ? "POPULAR"
+                : undefined;
 
-          options: [],
+          return {
+            id: product.id,
 
-          badge,
+            name: product.name,
 
-          inStock:
-            product.is_active,
-        };
-      }
-    )
-    .filter(
-      (
-        product
-      ): product is Product =>
-        product !== null
-    );
+            slug: product.slug,
+
+            category,
+
+            price:
+              Number(
+                product.price
+              ),
+
+            originalPrice:
+              product.compare_at_price !==
+              null
+                ? Number(
+                    product.compare_at_price
+                  )
+                : undefined,
+
+            rating:
+              stats?.rating ??
+              0,
+
+            reviewCount:
+              stats?.reviewCount ??
+              0,
+
+            images:
+              imageMap.has(
+                product.id
+              )
+                ? [
+                    imageMap.get(
+                      product.id
+                    )!,
+                  ]
+                : [],
+
+            description: "",
+
+            options: [],
+
+            badge,
+
+            inStock:
+              product.is_active,
+          };
+        }
+      )
+      .filter(
+        (
+          product
+        ): product is Product =>
+          product !== null
+      );
+
+  return {
+    products:
+      mappedProducts,
+
+    hasMore,
+  };
 }
-
 /* =========================================================
    RELATED PRODUCTS
 ========================================================= */

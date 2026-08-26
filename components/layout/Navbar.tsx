@@ -211,14 +211,11 @@ export default function Navbar() {
               href="/"
               className="flex items-center"
             >
-              <Image
-                src="/images/lakshay-logo.png"
-                alt="Lakshay Fashion Collection"
-                width={200}
-                height={60}
-                priority
-                className="h-10 w-auto max-w-[170px] object-contain sm:h-12 sm:max-w-[200px]"
-              />
+              <img
+  src="/images/lakshay-logo.png"
+  alt="Lakshay Fashion Collection"
+  className="h-10 w-auto max-w-[170px] object-contain sm:h-12 sm:max-w-[200px]"
+/>
             </Link>
 
             {/* Desktop Navigation */}

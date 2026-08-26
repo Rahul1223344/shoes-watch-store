@@ -5,10 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
-     "https://www.lakshayfashioncollection.com";
+    "https://www.lakshayfashioncollection.com";
 
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
 
   const {
     data: products,
@@ -31,18 +30,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const productUrls =
     (products ?? []).map(
       (product) => ({
-        url:
-          `${siteUrl}/product/${product.slug}`,
+        url: `${siteUrl}/product/${product.slug}`,
 
         lastModified:
           product.updated_at
-            ? new Date(
-                product.updated_at
-              )
+            ? new Date(product.updated_at)
             : new Date(),
 
-        changeFrequency:
-          "weekly" as const,
+        changeFrequency: "weekly" as const,
 
         priority: 0.8,
       })
@@ -52,11 +47,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: siteUrl,
 
-      lastModified:
-        new Date(),
+      lastModified: new Date(),
 
-      changeFrequency:
-        "daily",
+      changeFrequency: "daily",
 
       priority: 1,
     },

@@ -6,44 +6,43 @@ import Navbar from "@/components/layout/Navbar";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
-  "http://localhost:3000";
+  "https://www.lakshayfashioncollection.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
 
   title: {
-    default: "Premium Shoes & Watches",
-    template: "%s | Premium Shoes & Watches",
+    default: "Lakshay Fashion Collection | Shoes & Watches",
+    template: "%s | Lakshay Fashion Collection",
   },
 
   description:
-    "Explore premium shoes and watches with stylish designs, comfortable choices and direct WhatsApp ordering.",
+    "Shop stylish shoes and watches at Lakshay Fashion Collection. Discover comfortable footwear and fashionable watches for everyday style.",
 
-  applicationName:
-    "Premium Shoes & Watches",
+  applicationName: "Lakshay Fashion Collection",
 
   keywords: [
+    "Lakshay Fashion Collection",
     "shoes",
     "watches",
     "buy shoes online",
     "buy watches online",
-    "premium shoes",
-    "premium watches",
     "shoes store",
     "watch store",
+    "shoes and watches",
+    "Niwai shoes store",
+    "Niwai watch store",
   ],
 
   authors: [
     {
-      name: "Premium Shoes & Watches",
+      name: "Lakshay Fashion Collection",
     },
   ],
 
-  creator:
-    "Premium Shoes & Watches",
+  creator: "Lakshay Fashion Collection",
 
-  publisher:
-    "Premium Shoes & Watches",
+  publisher: "Lakshay Fashion Collection",
 
   alternates: {
     canonical: "/",
@@ -56,8 +55,7 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      "max-image-preview":
-        "large",
+      "max-image-preview": "large",
       "max-snippet": -1,
       "max-video-preview": -1,
     },
@@ -65,29 +63,25 @@ export const metadata: Metadata = {
 
   openGraph: {
     type: "website",
-
     locale: "en_IN",
-
     url: siteUrl,
-
-    siteName:
-      "Premium Shoes & Watches",
+    siteName: "Lakshay Fashion Collection",
 
     title:
-      "Premium Shoes & Watches",
+      "Lakshay Fashion Collection | Shoes & Watches",
 
     description:
-      "Explore premium shoes and watches with stylish designs, comfortable choices and direct WhatsApp ordering.",
+      "Shop stylish shoes and watches at Lakshay Fashion Collection. Discover comfortable footwear and fashionable watches for everyday style.",
   },
 
   twitter: {
     card: "summary_large_image",
 
     title:
-      "Premium Shoes & Watches",
+      "Lakshay Fashion Collection | Shoes & Watches",
 
     description:
-      "Explore premium shoes and watches with stylish designs, comfortable choices and direct WhatsApp ordering.",
+      "Shop stylish shoes and watches at Lakshay Fashion Collection. Discover comfortable footwear and fashionable watches for everyday style.",
   },
 
   icons: {

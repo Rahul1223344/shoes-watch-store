@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
-
+import Script from "next/script";
 import Navbar from "@/components/layout/Navbar";
 
 const siteUrl =
@@ -103,6 +103,22 @@ export default function RootLayout({
         <Navbar />
 
         {children}
+
+        {/* Google Analytics */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id"=${process.env.NEXT_PUBLIC_GA_ID}`}
+          strategy="afterInteractive"
+        />
+
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){window.dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
+          `}
+        </Script>
       </body>
     </html>
   );

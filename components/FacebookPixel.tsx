@@ -29,6 +29,7 @@ function PixelTracker() {
 }
 
 export default function FacebookPixel() {
+    console.log("META PIXEL ID:", FB_PIXEL_ID);
   if (!FB_PIXEL_ID) {
     return null;
   }

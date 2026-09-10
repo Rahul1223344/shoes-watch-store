@@ -89,6 +89,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  other: {
+    "facebook-domain-verification": "lmjmhlbt662434arqb7ph08vtq3w1v",
+  },
 };
 
 export default function RootLayout({

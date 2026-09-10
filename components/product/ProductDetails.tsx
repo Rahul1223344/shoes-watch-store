@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { event } from "@/lib/fpixel";
 import type { FormEvent } from "react";
 import { Star, Check, Mail } from "lucide-react";
 
@@ -35,6 +36,16 @@ export default function ProductDetails({
 
   const [orderLoading, setOrderLoading] =
     useState(false);
+
+  useEffect(() => {
+  event("ViewContent", {
+    content_ids: [product.id],
+    content_name: product.name,
+    content_type: "product",
+    value: product.price,
+    currency: "INR",
+  });
+}, [product.id, product.name, product.price]);
 
   const handleOptionChange = (
     optionName: string,
@@ -88,7 +99,17 @@ export default function ProductDetails({
     }
 
     setError("");
-    setShowBuyerForm(true);
+
+event("InitiateCheckout", {
+  content_ids: [product.id],
+  content_name: product.name,
+  content_type: "product",
+  num_items: quantity,
+  value: product.price * quantity,
+  currency: "INR",
+});
+
+setShowBuyerForm(true);
   };
 
   const handleCompleteOrder = (

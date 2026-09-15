@@ -537,7 +537,7 @@ export default function ProductDetails({
               "
             >
               <Mail size={19} />
-              Order via Email
+              Buy Now
             </button>
 
             {/* Availability */}

@@ -36,16 +36,17 @@ export default function ProductDetails({
 
   const [orderLoading, setOrderLoading] =
     useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
 
   useEffect(() => {
-  event("ViewContent", {
-    content_ids: [product.id],
-    content_name: product.name,
-    content_type: "product",
-    value: product.price,
-    currency: "INR",
-  });
-}, [product.id, product.name, product.price]);
+    event("ViewContent", {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: "product",
+      value: product.price,
+      currency: "INR",
+    });
+  }, [product.id, product.name, product.price]);
 
   const handleOptionChange = (
     optionName: string,
@@ -100,22 +101,22 @@ export default function ProductDetails({
 
     setError("");
 
-event("InitiateCheckout", {
-  content_ids: [product.id],
-  content_name: product.name,
-  content_type: "product",
-  num_items: quantity,
-  value: product.price * quantity,
-  currency: "INR",
-});
+    event("InitiateCheckout", {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: "product",
+      num_items: quantity,
+      value: product.price * quantity,
+      currency: "INR",
+    });
 
-setShowBuyerForm(true);
+    setShowBuyerForm(true);
   };
 
-  const handleCompleteOrder = (
-    event: FormEvent<HTMLFormElement>
+  const handleCompleteOrder = async (
+    e : FormEvent<HTMLFormElement>
   ) => {
-    event.preventDefault();
+    e.preventDefault();
 
     setError("");
 
@@ -142,16 +143,6 @@ setShowBuyerForm(true);
       return;
     }
 
-    const orderEmail =
-      process.env.NEXT_PUBLIC_ORDER_EMAIL;
-
-    if (!orderEmail) {
-      setError(
-        "Order email is not configured yet."
-      );
-      return;
-    }
-
     setOrderLoading(true);
 
     const optionsText = Object.entries(
@@ -166,43 +157,69 @@ setShowBuyerForm(true);
     const totalPrice =
       product.price * quantity;
 
-    const subject = encodeURIComponent(
-      `New Order - ${product.name}`
-    );
+    try {
+      const response = await fetch(
+        "/api/orders",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            mobile,
+            address,
+            productName: product.name,
+            productPrice: product.price,
+            quantity,
+            totalPrice,
+            optionsText,
+          }),
+        }
+      );
 
-    const body = encodeURIComponent(`Hello,
+      const result = await response.json();
 
-I would like to place an order.
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "Unable to submit your order."
+        );
+      }
 
-==============================
-CUSTOMER INFORMATION
-==============================
+      // Email was successfully sent.
+      // Record the successful order submission.
+      event("Purchase", {
+        content_ids: [product.id],
+        content_name: product.name,
+        content_type: "product",
+        num_items: quantity,
+        value: totalPrice,
+        currency: "INR",
+      });
 
-Name: ${name}
-Mobile: ${mobile}
-Delivery Address:
-${address}
+      setOrderLoading(false);
+      setShowBuyerForm(false);
+      setError("");
+      setOrderSuccess(true);
+    } catch (error) {
+      console.error(
+        "Order submission error:",
+        error
+      );
 
-==============================
-PRODUCT INFORMATION
-==============================
+      setOrderLoading(false);
 
-Product: ${product.name}
-Price: ₹${product.price.toLocaleString("en-IN")}
-Quantity: ${quantity}
-Total: ₹${totalPrice.toLocaleString("en-IN")}
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to submit your order. Please try again."
+      );
+    }
+  };
 
-${optionsText}
-
-Please contact me to confirm the order and delivery details.
-
-Thank you.`);
-
-    window.location.href =
-      `mailto:${orderEmail}?subject=${subject}&body=${body}`;
-
-    setOrderLoading(false);
-    setShowBuyerForm(false);
+  const handleContinueShopping = () => {
+    window.location.href = "/";
   };
 
   return (
@@ -425,6 +442,7 @@ Thank you.`);
                   bg-white/70
                 "
               >
+
                 <button
                   type="button"
                   onClick={decreaseQuantity}
@@ -465,6 +483,7 @@ Thank you.`);
                 >
                   +
                 </button>
+
               </div>
 
             </div>
@@ -646,6 +665,79 @@ Thank you.`);
 
         {/* Reviews */}
         <Reviews reviews={reviews} />
+
+        {/* ================= ORDER SUCCESS ================= */}
+        {orderSuccess && (
+          <div className="fixed inset-0 z-[110] overflow-y-auto bg-white px-4 py-8 sm:px-6">
+            <div className="mx-auto flex min-h-full w-full max-w-2xl items-center justify-center">
+              <div className="w-full">
+                <div className="text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <Check size={34} strokeWidth={2.5} />
+                  </div>
+                  <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+                    Order Submitted
+                  </p>
+                  <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                    Thank you for your order!
+                  </h2>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-500">
+                    Your order request has been sent successfully. The shopkeeper will contact you to confirm the order and delivery details.
+                  </p>
+                </div>
+
+                <div className="mt-8 rounded-[24px] border border-black/5 bg-gray-50 p-5 sm:p-7">
+                  <h3 className="text-lg font-black">Order details</h3>
+                  <div className="mt-5 space-y-5 text-sm">
+                    <div>
+                      <p className="text-gray-500">Customer</p>
+                      <p className="mt-1 font-semibold">{buyerName}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Mobile number</p>
+                      <p className="mt-1 font-semibold">{buyerMobile}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Delivery address</p>
+                      <p className="mt-1 whitespace-pre-line font-semibold leading-6">{buyerAddress}</p>
+                    </div>
+                    <div className="border-t border-black/5 pt-5">
+                      <p className="text-gray-500">Product</p>
+                      <p className="mt-1 font-semibold">{product.name}</p>
+                      {Object.keys(selectedOptions).length > 0 && (
+                        <p className="mt-2 text-gray-500">
+                          {Object.entries(selectedOptions).map(([name, value]) => `${name}: ${value}`).join(" • ")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between border-t border-black/5 pt-5">
+                      <div>
+                        <p className="text-gray-500">Quantity</p>
+                        <p className="mt-1 font-semibold">{quantity}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-gray-500">Total</p>
+                        <p className="mt-1 text-xl font-black">₹{(product.price * quantity).toLocaleString("en-IN")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleContinueShopping}
+                  className="mt-6 flex w-full items-center justify-center rounded-2xl bg-blue-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+                >
+                  Continue Shopping
+                </button>
+
+                <p className="mt-5 text-center text-xs leading-5 text-gray-400">
+                  Order submitted successfully. Please keep your mobile number available so the shopkeeper can contact you.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ================= CUSTOMER FORM MODAL ================= */}
         {showBuyerForm && (
@@ -898,6 +990,7 @@ Thank you.`);
                       sm:flex-row
                     "
                   >
+
                     <button
                       type="button"
                       onClick={() => {
@@ -944,9 +1037,10 @@ Thank you.`);
                       "
                     >
                       {orderLoading
-                        ? "Preparing Order..."
+                        ? "Sending Order..."
                         : "Complete Order"}
                     </button>
+
                   </div>
 
                 </form>

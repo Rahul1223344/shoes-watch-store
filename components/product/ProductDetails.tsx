@@ -29,10 +29,16 @@ export default function ProductDetails({
   const [showBuyerForm, setShowBuyerForm] =
     useState(false);
 
-  const [buyerName, setBuyerName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [buyerMobile, setBuyerMobile] = useState("");
-  const [buyerAddress, setBuyerAddress] =
-    useState("");
+  const [buyerAddress, setBuyerAddress] = useState("");
+  const [apartment, setApartment] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("Rajasthan");
+  const [pinCode, setPinCode] = useState("");
+  const country = "India";
+  const paymentMethod = "COD" as const;
 
   const [orderLoading, setOrderLoading] =
     useState(false);
@@ -120,26 +126,50 @@ export default function ProductDetails({
 
     setError("");
 
-    const name = buyerName.trim();
+    const first = firstName.trim();
+    const last = lastName.trim();
+    const name = `${first} ${last}`.trim();
     const mobile = buyerMobile.trim();
-    const address = buyerAddress.trim();
+    const streetAddress = buyerAddress.trim();
+    const apartmentValue = apartment.trim();
+    const cityValue = city.trim();
+    const pinCodeValue = pinCode.trim();
+    const address = [
+      streetAddress,
+      apartmentValue,
+      cityValue,
+      state,
+      pinCodeValue,
+      country,
+    ].filter(Boolean).join(", ");
 
-    if (name.length < 2) {
-      setError("Please enter your full name.");
+    if (first.length < 1 || last.length < 1) {
+      setError("Please enter your first and last name.");
       return;
     }
 
     if (!/^[6-9]\d{9}$/.test(mobile)) {
-      setError(
-        "Please enter a valid 10-digit mobile number."
-      );
+      setError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    if (address.length < 10) {
-      setError(
-        "Please enter your complete delivery address."
-      );
+    if (streetAddress.length < 5) {
+      setError("Please enter your street address.");
+      return;
+    }
+
+    if (!cityValue) {
+      setError("Please enter your city.");
+      return;
+    }
+
+    if (!state) {
+      setError("Please select your state.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(pinCodeValue)) {
+      setError("Please enter a valid 6-digit PIN code.");
       return;
     }
 
@@ -167,8 +197,17 @@ export default function ProductDetails({
           },
           body: JSON.stringify({
             name,
+            firstName: first,
+            lastName: last,
             mobile,
             address,
+            streetAddress,
+            apartment: apartmentValue,
+            city: cityValue,
+            state,
+            pinCode: pinCodeValue,
+            country,
+            paymentMethod,
             productName: product.name,
             productPrice: product.price,
             quantity,
@@ -187,9 +226,8 @@ export default function ProductDetails({
         );
       }
 
-      // Email was successfully sent.
-      // Record the successful order submission.
-      event("Purchase", {
+      // This confirms an order inquiry was submitted, not a completed sale.
+      event("Lead", {
         content_ids: [product.id],
         content_name: product.name,
         content_type: "product",
@@ -691,7 +729,7 @@ export default function ProductDetails({
                   <div className="mt-5 space-y-5 text-sm">
                     <div>
                       <p className="text-gray-500">Customer</p>
-                      <p className="mt-1 font-semibold">{buyerName}</p>
+                      <p className="mt-1 font-semibold">{`${firstName} ${lastName}`.trim()}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Mobile number</p>
@@ -699,7 +737,7 @@ export default function ProductDetails({
                     </div>
                     <div>
                       <p className="text-gray-500">Delivery address</p>
-                      <p className="mt-1 whitespace-pre-line font-semibold leading-6">{buyerAddress}</p>
+                      <p className="mt-1 whitespace-pre-line font-semibold leading-6">{[buyerAddress, apartment, city, state, pinCode, country].filter(Boolean).join(", ")}</p>
                     </div>
                     <div className="border-t border-black/5 pt-5">
                       <p className="text-gray-500">Product</p>
@@ -821,145 +859,174 @@ export default function ProductDetails({
                   className="mt-6 space-y-5"
                 >
 
-                  {/* Name */}
+                  {/* Country / Region */}
                   <div>
-                    <label
-                      htmlFor="buyer-name"
-                      className="
-                        mb-2
-                        block
-                        text-sm
-                        font-semibold
-                      "
-                    >
-                      Full Name
+                    <label htmlFor="buyer-country" className="mb-2 block text-sm font-semibold">
+                      Country/Region
                     </label>
+                    <select
+                      id="buyer-country"
+                      value={country}
+                      disabled
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-100"
+                    >
+                      <option value="India">India</option>
+                    </select>
+                  </div>
 
+                  {/* First and Last Name */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="buyer-first-name" className="sr-only">First name</label>
+                      <input
+                        id="buyer-first-name"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="First name"
+                        autoComplete="given-name"
+                        maxLength={60}
+                        required
+                        className="w-full min-w-0 rounded-xl border border-black/10 bg-gray-50/70 px-4 py-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="buyer-last-name" className="sr-only">Last name</label>
+                      <input
+                        id="buyer-last-name"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Last name"
+                        autoComplete="family-name"
+                        maxLength={60}
+                        required
+                        className="w-full min-w-0 rounded-xl border border-black/10 bg-gray-50/70 px-4 py-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Street Address */}
+                  <div>
+                    <label htmlFor="buyer-address" className="sr-only">Address</label>
                     <input
-                      id="buyer-name"
+                      id="buyer-address"
                       type="text"
-                      value={buyerName}
-                      onChange={(event) =>
-                        setBuyerName(
-                          event.target.value
-                        )
-                      }
-                      placeholder="Enter your full name"
-                      autoComplete="name"
+                      value={buyerAddress}
+                      onChange={(e) => setBuyerAddress(e.target.value)}
+                      placeholder="Address"
+                      autoComplete="address-line1"
+                      maxLength={200}
                       required
-                      className="
-                        w-full
-                        rounded-xl
-                        border
-                        border-black/10
-                        bg-gray-50/70
-                        px-4
-                        py-3
-                        text-sm
-                        outline-none
-                        transition
-                        focus:border-black/30
-                        focus:bg-white
-                        focus:ring-2
-                        focus:ring-black/5
-                      "
+                      className="w-full rounded-xl border border-black/10 bg-gray-50/70 px-4 py-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
                     />
                   </div>
 
-                  {/* Mobile */}
+                  {/* Apartment / Suite */}
                   <div>
-                    <label
-                      htmlFor="buyer-mobile"
-                      className="
-                        mb-2
-                        block
-                        text-sm
-                        font-semibold
-                      "
-                    >
-                      Mobile Number
-                    </label>
+                    <label htmlFor="buyer-apartment" className="sr-only">Apartment, suite, etc. (optional)</label>
+                    <input
+                      id="buyer-apartment"
+                      type="text"
+                      value={apartment}
+                      onChange={(e) => setApartment(e.target.value)}
+                      placeholder="Apartment, suite, etc. (optional)"
+                      autoComplete="address-line2"
+                      maxLength={150}
+                      className="w-full rounded-xl border border-black/10 bg-gray-50/70 px-4 py-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                    />
+                  </div>
 
+                  {/* City, State and PIN code */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                      <label htmlFor="buyer-city" className="sr-only">City</label>
+                      <input
+                        id="buyer-city"
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="City"
+                        autoComplete="address-level2"
+                        maxLength={80}
+                        required
+                        className="w-full min-w-0 rounded-xl border border-black/10 bg-gray-50/70 px-3 py-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="buyer-state" className="sr-only">State</label>
+                      <select
+                        id="buyer-state"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        autoComplete="address-level1"
+                        required
+                        className="w-full min-w-0 rounded-xl border border-black/10 bg-white px-3 py-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                      >
+                        <option value="">Select state</option>
+                        {[
+                          "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
+                          "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh",
+                          "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra",
+                          "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+                          "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+                          "Uttar Pradesh", "Uttarakhand", "West Bengal",
+                          "Andaman and Nicobar Islands", "Chandigarh",
+                          "Dadra and Nagar Haveli and Daman and Diu", "Delhi",
+                          "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
+                        ].map((stateName) => (
+                          <option key={stateName} value={stateName}>{stateName}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="buyer-pin" className="sr-only">PIN code</label>
+                      <input
+                        id="buyer-pin"
+                        type="text"
+                        inputMode="numeric"
+                        value={pinCode}
+                        onChange={(e) => setPinCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="PIN code"
+                        autoComplete="postal-code"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        required
+                        className="w-full min-w-0 rounded-xl border border-black/10 bg-gray-50/70 px-3 py-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label htmlFor="buyer-mobile" className="mb-2 block text-sm font-semibold">Phone</label>
                     <input
                       id="buyer-mobile"
                       type="tel"
                       inputMode="numeric"
-                      maxLength={10}
                       value={buyerMobile}
-                      onChange={(event) =>
-                        setBuyerMobile(
-                          event.target.value.replace(
-                            /\D/g,
-                            ""
-                          )
-                        )
-                      }
+                      onChange={(e) => setBuyerMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       placeholder="10-digit mobile number"
-                      autoComplete="tel"
+                      autoComplete="tel-national"
+                      pattern="[6-9][0-9]{9}"
+                      maxLength={10}
                       required
-                      className="
-                        w-full
-                        rounded-xl
-                        border
-                        border-black/10
-                        bg-gray-50/70
-                        px-4
-                        py-3
-                        text-sm
-                        outline-none
-                        transition
-                        focus:border-black/30
-                        focus:bg-white
-                        focus:ring-2
-                        focus:ring-black/5
-                      "
+                      className="w-full rounded-xl border border-black/10 bg-gray-50/70 px-4 py-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10"
                     />
                   </div>
 
-                  {/* Address */}
-                  <div>
-                    <label
-                      htmlFor="buyer-address"
-                      className="
-                        mb-2
-                        block
-                        text-sm
-                        font-semibold
-                      "
-                    >
-                      Delivery Address
-                    </label>
-
-                    <textarea
-                      id="buyer-address"
-                      value={buyerAddress}
-                      onChange={(event) =>
-                        setBuyerAddress(
-                          event.target.value
-                        )
-                      }
-                      placeholder="House / Flat, Street, Area, City, State, PIN"
-                      autoComplete="street-address"
-                      required
-                      rows={4}
-                      className="
-                        w-full
-                        resize-none
-                        rounded-xl
-                        border
-                        border-black/10
-                        bg-gray-50/70
-                        px-4
-                        py-3
-                        text-sm
-                        outline-none
-                        transition
-                        focus:border-black/30
-                        focus:bg-white
-                        focus:ring-2
-                        focus:ring-black/5
-                      "
-                    />
+                  {/* Payment: COD is the only available method */}
+                  <div className="pt-2">
+                    <h3 className="text-xl font-semibold">Payment</h3>
+                    <p className="mt-1 text-sm text-gray-500">All transactions are secure and encrypted.</p>
+                    <div className="mt-4 rounded-2xl border border-blue-600 bg-blue-50/70 px-5 py-5" aria-label="Payment method: Cash on Delivery, selected">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-blue-600" aria-hidden="true">
+                          <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+                        </span>
+                        <span className="font-semibold">Cash on Delivery (COD)</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Error */}

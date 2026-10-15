@@ -226,11 +226,14 @@ export default function ProductDetails({
         );
       }
 
-      // This confirms an order inquiry was submitted, not a completed sale.
-      event("Lead", {
-        content_ids: [product.id],
+      // Conversion definition: a successfully submitted COD order request.
+      // This is not confirmation that COD payment has been collected.
+      // Track only after the server accepts the order submission.
+      event("Purchase", {
+        content_ids: [String(product.id)],
         content_name: product.name,
         content_type: "product",
+        contents: [{ id: String(product.id), quantity, item_price: product.price }],
         num_items: quantity,
         value: totalPrice,
         currency: "INR",
